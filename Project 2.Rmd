@@ -1,0 +1,336 @@
+---
+title: "STA303 - ASSIGNMENT 2"
+author: "Manyi Luo - 1003799419"
+date: "3/6/2020"
+output: html_document
+---
+
+```{r, echo=FALSE}
+library(tidyverse)
+install.packages("Pmisc", repos = "http://R-Forge.R-project.org",
+type = "source")
+```
+
+#Question 1
+
+#Question 1a
+Briefly describe why, without even looking at these data, you would have a concern about
+one of the assumptions of linear regression.
+
+A concern toward the assumption of linear regression might be: each individual student’s score on the end-of-year language test might be affected by different schools (for example: private school and public schools etc.), so students' scores within a particular school might be correlated.
+
+#Question 1b
+Create a scatter plot to examine the relationship between verbal IQ scores and end-of-year
+language scores. Include a line of best fit. Briefly describe what you see in the plot in the context of the question of interest.
+
+```{r}
+schooldata <- read.csv("/Users/mandy/Desktop/school.csv")
+
+ggplot(schooldata, aes(x = iq, y = test)) +
+    geom_point(alpha = 0.5) +
+    geom_smooth(method = "lm", se = FALSE) +
+    theme_classic()
+```
+
+From the blue fitted line presented above, we can see that there is an approximate positive linear relationship between verbal IQ scores and end-of-year language scores, meaning that student with higher verbal IQ scores might have higher end-of-year language scores. 
+
+Also we can see that the variance of data points are not constant, as individual black dots are not randomly distributed visually. Points located in the middle have greater varibility, so linear model cannot be applied in this case.
+
+#Question 1c
+Create two new variables in the data set, mean_ses that is the mean of ses for each school,
+and mean_iq that is mean of iq for each school.
+
+```{r}
+school1 <- schooldata %>% 
+    group_by(school) %>% 
+    mutate(mean_ses = mean(ses), mean_iq = mean(iq))
+school1
+```
+
+#Question 1d
+Fit a linear model with test as the response and use iq, sex, ses, minority_status,
+mean_ses and mean_iq as the covariates. Show the code for the model you fit and the
+results of running summary() and confint() on the model you fit and briefly interpret the results. (A complete interpretation here should discuss what the intercept means, and for
+which subgroup of students it applies, as well as the location of the confidence intervals for each covariate, i.e. below 0, includes 0 or above zero. Address the question of interest.)
+
+```{r}
+line1 <- lm(test ~ iq + sex + ses + minority_status + mean_ses + mean_iq, data=school1)
+summary(line1)
+confint(line1)
+```
+
+The intercept means the baseline score of a student's end-of-year language test. This indicates the subgroup of students who have zero verbal IQ score (at average level), are male, have socioeconomic status of zero (at average level), and not belong to ethnic minority groups.
+
+We can see that only the confidence interval of minority_status's coefficient (-2.0859568, 1.7442963) includes zero, meaning that the association between minority_status and student’s score on an end-of-year language test is not significant. 
+
+The confidence interval of iq's coefficient (2.0504849, 2.5206429), sex's coefficient (1.4918849, 3.1946222), ses's coefficient (0.1414857, 0.2451566) and mean_iq's coefficient (0.8328516, 2.0206247) are above zero, meaning that iq, sex, ses and mean_iq have a significant positive effect toward student’s score on an end-of-year language test. 
+
+Vice versa, the confidence interval of mean_ses's coefficient (-0.3066319, -0.1244709) is below zero, meaning that mean_ses has a significant negative effect toward student’s score on an end-of-year language test.
+
+Note: all confidence intervals mentioned in this question are 95%.
+
+#Question 1e
+Fit a linear mixed model with the same fixed effects as 1c and with a random intercept for school. Show the code for the model you fit and the results of running summary() and confint() on the model you fit and briefly interpret the results. (Hint 1: Consider the estimated standard deviations in the summary to make sure you understand the first two rows of the confint output. Hint 2: If you want to suppress the ‘Computing profile confidence intervals …’ message you can use message=FALSE in the chunk.)
+
+```{r}
+line2 <- lme4::lmer(test ~ iq + sex + ses + minority_status + mean_ses + mean_iq + (1|school), data = school1)
+summary(line2)
+confint(line2)
+```
+
+The estimated standard deviations in the summary can be used to compute confidence interval using point estimate. In general: 
+$$
+CI = (\hat{beta} - 1.96*se(\hat{beta}), \hat{beta} + 1.96*se(\hat{beta}))
+$$
+
+Intercepts in this case still represent the baseline scores of student's end-of-year language test, but are classified into 58 different schools (random intercept effects).
+
+Still, we can see that only the confidence interval of minority_status's coefficient (-2.5423935, 1.24925972) includes zero, meaning that there might not be significant association between minority_status and student’s score on an end-of-year language test.
+
+The confidence interval of iq's coefficient (2.0649432, 2.49094360), sex's coefficient (1.5044771, 3.08014874), ses's coefficient (0.1459275, 0.23975452) and mean_iq's coefficient (0.6166461, 2.63522563) are above zero, meaning that iq, sex, ses and mean_iq have a significant positive effect toward student’s score on an end-of-year language test.
+
+Vice versa, the confidence interval of mean_ses's coefficient (-0.3564217, -0.04606047) is below zero, meaning that mean_ses has a significant negative effect toward student’s score on an end-of-year language test.
+
+Also according to Hint 1, we can see that the confidence interval for random intercept's coefficient (2.1818595, 3.51821014) and residual's coefficient (5.9011373, 6.46042873) both have a significant positive effect toward student’s score on an end-of-year language test. The standard deviation of random intercept is 2.859 and the standard deviation of residual is 6.184 (porportion of random effects variance among total variance is calculated and explained in 1g), which can be used to calculate confidence intervals using the formula above.
+
+Note: all confidence intervals mentioned in this question are 95%.
+
+#Question 1f
+Briefly describe similarities and differences between the coefficients of the fixed effects in the results from 1d and 1e and what causes the differences. You may wish to use the use
+summaries of the data to help you. See the example code document.
+
+Similarities between coefficients derived from 1d and 1e are slopes and differences between coefficients derived from 1d and 1e are intercepts. This is because we are only adding random intercepts effects and the model we fit in 1e are consists of multiple parallel lines with same slopes but different intercepts. What's more, the confidence interval derived in 1e are larger comparing to 1d due to the addition of random effects.
+
+#Question 1g
+Plot the random effects for the different schools. Does it seem reasonable to have included
+these random effects?
+
+```{r}
+random_effects <- lme4::ranef(line2, condVar = TRUE)
+ranef_df <- as.data.frame(random_effects)
+ranef_df %>%
+ggplot(aes(x = grp, y = condval, ymin = condval - 2*condsd, ymax = condval + 2*condsd)) + geom_point() + geom_errorbar() + coord_flip()
+```
+
+It seems reasonable to have included these random effects. From the summary table above in 1e, the variance of random effects is 8.177 and the variance of residual is 38.240. The porportion of random effects variance among total variance of the model is: 8.177/(8.177 + 38.240) = 17.616%. This means adding random intercepts can explain 17.616% of the total variance, so the random effect should be included in the model due to its helpfulness.
+
+Also, from the plot of confidence intervals for estimated random effects, we can see that the confidence intervals are not completely overlapping with each other (both upper bound and lower bound are not equal to each other) and the point estimates for coefficients are different as well (the shape is skewed). This also means that random effects are required and necessary to be included. Including this will also help to explain our data more precisly.
+
+#Question 1h
+Write a short paragraph summarising, what you have learned from this analysis. Focus
+on answering the question of interest. Remember that interpreting confidence intervals is
+preferred to point estimates and make sure any discussion of p-values and confidence intervals are statistically correct. Also mention what proportion of the residual variation, after fitting the fixed effects, the differences between schools accounts for.
+
+From the analysis of confidence interval above, we can see that the model with random intercepts effect should be adopted (1g).
+
+From the analysis of confidence interval, student's verbal IQ score (iq), sex, socioeconomic status (ses), mean of student's verbal IQ score (mean_iq) and mean of student's socioeconomic status (mean_ses) are all significant and are associated with student’s score on an end-of-year language test. However, ethic minority (minority_status) is not associated with student’s score. This answers our question of interest.
+
+To ensure statistical correctness, the conclusion of significance derived from confidence interval should also coincide with the conclusion derived from p-values, as p-value smaller than 0.05 (95% confidence interval) are considered as significant and the null hypothesis of coefficient equals to zero is rejected. Vice versa for p-value greater than 0.05. The proportion of residual variation over total after fitting the fixed effects is 1 - 17.616% = 82.384%. And the differences between schools accounts for differences in intercepts.
+
+#Question 2
+
+```{r}
+smokeFile = "smokeDownload.RData"
+if (!file.exists(smokeFile)) {
+download.file("http://pbrown.ca/teaching/303/data/smoke.RData",
+smokeFile)}
+(load(smokeFile))
+
+smokeFormats[smokeFormats[, "colName"] == "chewing_tobacco_snuff_or",
+c("colName", "label")]
+
+#get rid of 9, 10 year olds and missing age and race
+smokeSub = smoke[which(smoke$Age > 10 & !is.na(smoke$Race)),]
+smokeSub$ageC = smokeSub$Age - 16
+library("glmmTMB")
+smokeModelT = glmmTMB(chewing_tobacco_snuff_or ~ ageC * Sex + RuralUrban + Race + (1 | state/school), data = smokeSub, family = binomial(link = "logit"))
+knitr::kable(summary(smokeModelT)$coef$cond, digits = 2)
+
+Pmisc::ranefPlot(smokeModelT, grpvar = "state", level = 0.5,
+maxNames = 12)
+Pmisc::ranefPlot(smokeModelT, grpvar = "school:state", level = 0.5,
+maxNames = 12, xlim = c(-1, 2.2))
+```
+
+#Question 2a
+Write down a statistical model corresponding to smokeModelT. Briefly explain the difference
+between this model and a generalized linear model.
+
+A statistical model corresponding to smokeModelT can be expressed as below:
+
+$$
+Y_{ijk} \sim {Binomial} (N, \mu_{ijk})
+$$
+$$
+logit(\frac{\mu_{ijk}}{1-\mu_{ijk}}) = x_{ij}\beta + A_i + B_{ij}
+$$
+
+Here, $A_i$ represents the random effect of different states (i), whereas $$A_i \sim N (0, \sigma^2_A)$$
+
+$B_{ij}$ represents the random effect of different schools (j) under state, whereas $$B_{ij} \sim N (0, \sigma^2_B)$$
+
+$\mu_{ijk}$ is the mean tobacco consumption for the $k^{th}$ individual student from the $j^{th}$ school of the $i^{th}$ state.
+
+The difference can be mainly described as: The generalized linear model (GLM) includes only fixed effects, whereas the generalized linear mixed model (GLMM) includes both fixed effects and random effects. What's more, GLMM also indicates the variance within a group; whereas GLM only indicates variance between groups.
+
+#Question 2b
+Briefly explain why this generalized linear mixed model with a logit link is more appropriate for this dataset than a linear mixed model.
+
+The reason why generalized linear mixed model (GLMM) with a logit link is more appropriate is because the response variable (chewing_tobacco_snuff_or) in this case is dummy, meaning that its output can only be either 0 or 1 (bernouli). And summing these responses up constructs binomial.
+
+#Question 2c
+Write a paragraph assessing the hypothesis that state-level differences in chewing tobacco
+usage among high school students are much larger than differences between schools within
+a state. If one was interested in identifying locations with many tobacco chewers (in order to sell chewing tobacco to children, or if you prefer to implement programs to reduce tobacco chewing), would it be important to find individual schools with high chewing rates or would targeting those states where chewing is most common be sufficient?
+
+Based on the summary output presented in Table 3, we can see that within a particular state, the standard deviation of chewing tobacco for a school is 0.75. While among states, the standard deviation of chewing tobacco for a particular state is 0.31. We can see that the standard deviation (variance) of schools within states are larger. Therefore, we have strong evidence against the hypothesis that state-level differences in chewing tobacco
+usage among high school students are much larger than differences between schools within
+a state.
+
+Also we can analysis through plots. The first plot derived in this question indicates the differences of tobacco usage among high school students under each state. The second plot indicates the differences of tobacco usage among high school students among different schools. We can identify that the second plot is more skewed (larger variation) comparing to the first plot, which supports the same conclusion that state-level differences in chewing tobacco usage among high school students are not larger than differences between schools within a state. Therefore, from these two aspects, we can see that targeting on schools with high tobacco using rates is more significant in determining locations of high tobacco chewing.  
+
+
+#Question 3
+```{r}
+#download data
+pedestrainFile = Pmisc::downloadIfOld(
+'http://pbrown.ca/teaching/303/data/pedestrians.rds')
+pedestrians = readRDS(pedestrainFile)
+pedestrians = pedestrians[!is.na(pedestrians$time), ]
+pedestrians$y = pedestrians$Casualty_Severity == 'Fatal'
+
+dim(pedestrians)
+pedestrians[1:3, ]
+table(pedestrians$Casualty_Severity, pedestrians$sex)
+range(pedestrians$time)
+
+theGlm = glm(y ~ sex + age + Light_Conditions + Weather_Conditions,
+data = pedestrians, family = binomial(link = "logit"))
+knitr::kable(summary(theGlm)$coef, digits = 3)
+
+theGlmInt = glm(y ~ sex * age + Light_Conditions + Weather_Conditions,
+data = pedestrians, family = binomial(link = "logit"))
+knitr::kable(summary(theGlmInt)$coef, digits = 3)
+
+#Code for fig.2
+newData = expand.grid(
+age = levels(pedestrians$age),
+sex = c('Male', 'Female'),
+Light_Conditions = levels(pedestrians$Light_Conditions)[1],
+Weather_Conditions = levels(pedestrians$Weather_Conditions)[1])
+thePred = as.matrix(as.data.frame(
+predict(theGlmInt, newData, se.fit=TRUE)[1:2])) %*% Pmisc::ciMat(0.99)
+thePred = as.data.frame(thePred)
+thePred$sex =newData$sex
+thePred$age = as.numeric(gsub("[[:punct:]].*|[[:alpha:]]", "", newData$age))
+toPlot2 = reshape2::melt(thePred, id.vars = c('age','sex'))
+toPlot3 = reshape2::dcast(toPlot2, age ~ sex + variable)
+matplot(toPlot3$age, exp(toPlot3[,-1]),
+type='l', log='y', col=rep(c('black','red'), each=3),
+lty=rep(c(1,2,2),2),
+ylim = c(0.007, 0.11), xaxs='i',
+xlab= 'age', ylab='prob')
+legend('topleft', lty=1, col=c('black','red'), legend = c('male','female'), bty='n')
+```
+
+#Question 3a
+Write a short paragraph describing a case/control model (not the results) corresponding the
+theGlm and theGlmInt objects. Be sure to specify the case definition and the control group,
+and what the covariates are.
+
+Since the experiment in this case involves long time scope, we consider to use case/control model. The normal way is to wait and collect every fatal severity injuries and slight severity injuries data. While in the case/control model, we select people who once had fatal severity injuries and select the same amount of people who once had slight severity injuries. We then conduct researches on the situation of accidents through different aspects, which are the covariates listed below.
+
+For both theGlm and theGlmInt objects, the case group is all pedestrians involved in motor vehicle accidents with fatal severity injuries and the control group is all pedestrians involved in motor vehicle accidents with slight severity injuries.
+
+For theGlm objects, the covariates are sex (indicator variable, which equals 1 for female and 0 for male), age (numeric variable, which is partitioned by 5 years, for example: 0-5, 6-10...), light condition (catagorical variable, which is catagorized by level of darkness) and weather condition (catagorical variable, including rain, wind, snow...).
+
+For theGlmInt objects, the covariates are similar to theGlm objects, but it also include interaction terms. Sex, age, light condition and weather condition (same as theGlm) are included in theGlmInt as well and theGlmInt also include the interaction term between age and sex (also range from 0-5, 6-10...). 
+
+#Question 3b
+Write a short report assessing whether the UK road accident data are consistent with the
+hypothesis that women tend to be, on average, safer as pedestrians than men, particularly as teenagers and in early adulthood. Explain which of the two models fit is more appropriate for addressing this research question. 
+
+As the hypothsis suggested in the prompt, we focus on both sex (women) and age (as teenagers and in early adulthood), so theGlmInt model (model 2) which includes the interaction of sex and age is selected. First, we consider sex. From Table 6: Odds ratios for theGlm and theGlmInt, we can discover that the reference group in this case is male with age 26 - 35 years old. Under the row "sex", we can see that the odd ratio for female is 0.58, which is smaller than 1 (reference group). So we can conclude that there is lower probability for women to have fatal accident comparing to men, which means they are safer.
+
+Next, we considr age. Our answer depends on how we define "teenagers" (21 - 25 years old or 16 - 20 years old). Since we focus on early adulthood, we can find the estimated odds ratio for women with age 21 - 25 years old under the row "sex:age". We can see that the point estimate for women with age 21 - 25 years old's odd ratio is 0.96 and it's confidence interval is (0.84, 1.10). This confidence interval includes 1 (reference group), meaning that it is not significant enough to conclude, eventhough 0.96 (smaller than 1) indicates there is lower probability for women with age 21 - 25 years old to have fatal accident. 
+
+So we further check women with age 16 - 20 years old. We can see that the point estimate for women with age 16 - 20 years old's odd ratio is 1.16 and it's confidence interval is (1.03, 1.31). Therefore it's significant (since 1 is not included in the confidence interval) to say that there is higher probability for women with age 16 - 20 years old to have fatal accident, since 1.16 is larger than 1 (reference group). 
+
+Therefore, we can conclude that both sex and age are determining factors to make conclusions toward research question in this case, which suggests theGlmInt model should be used. Women tend to be, on average, safer as pedestrians than men, but we are not sure women as teenagers and in early adulthood are also safer.
+
+#Question 3c
+It is well established that women are generally more willing to seek medical attention for
+health problems than men, and it is hypothesized that men are less likely than women to
+report minor injuries caused by road accidents. Write a critical assessment of whether or not the control group is a valid one for assessing whether women are on average better at road safety than man.
+
+In order to make an assessment, we can use figure 2: Predicted probability of being a case in baseline conditions (daylight, fine no wind) with 99% CI using theGlmInt to discuss. We can see that the probability of fatal in males (indicated by the black line) are absolutely higher than the probability of fatal in females (indicated by the red line) among all age groups. So there is evidence to support the hypothesis that men are less likely than women to report minor injuries caused by road accidents, since all accidents are either classified as fatal or slight.
+
+This experiment design is good, but not good enough. There might exists a bias in data, as people with different sex may have different definition toward injuries, which may affect both classification of injuries (fatal or slight) and the decision of report injuries (for example: female may more likely to report). Also, the model might be a little bit inconclusive because it only includes two levels for injuries, so adding more levels may be helpful (for example: adding moderate injuries).
+
+```Appendix
+schooldata <- read.csv("/Users/mandy/Desktop/school.csv")
+ggplot(schooldata, aes(x = iq, y = test)) + geom_point(alpha = 0.5) + geom_smooth(method = "lm", se = FALSE) + theme_classic()
+school1 <- schooldata %>% 
+    group_by(school) %>% 
+    mutate(mean_ses = mean(ses), mean_iq = mean(iq))
+school1
+line1 <- lm(test ~ iq + sex + ses + minority_status + mean_ses + mean_iq, data=school1)
+summary(line1)
+confint(line1)
+line2 <- lme4::lmer(test ~ iq + sex + ses + minority_status + mean_ses + mean_iq + (1|school), data = school1)
+summary(line2)
+confint(line2)
+random_effects <- lme4::ranef(line2, condVar = TRUE)
+ranef_df <- as.data.frame(random_effects)
+ranef_df %>%
+ggplot(aes(x = grp, y = condval, ymin = condval - 2*condsd, ymax = condval + 2*condsd)) + geom_point() + geom_errorbar() + coord_flip()
+
+smokeFile = "smokeDownload.RData"
+if (!file.exists(smokeFile)) {
+download.file("http://pbrown.ca/teaching/303/data/smoke.RData", smokeFile)} (load(smokeFile))
+smokeFormats[smokeFormats[, "colName"] == "chewing_tobacco_snuff_or",
+c("colName", "label")]
+smokeSub = smoke[which(smoke$Age > 10 & !is.na(smoke$Race)),]
+smokeSub$ageC = smokeSub$Age - 16
+library("glmmTMB")
+smokeModelT = glmmTMB(chewing_tobacco_snuff_or ~ ageC * Sex + RuralUrban + Race + (1 | state/school), data = smokeSub, family = binomial(link = "logit"))
+knitr::kable(summary(smokeModelT)$coef$cond, digits = 2)
+Pmisc::ranefPlot(smokeModelT, grpvar = "state", level = 0.5,
+maxNames = 12)
+Pmisc::ranefPlot(smokeModelT, grpvar = "school:state", level = 0.5,
+maxNames = 12, xlim = c(-1, 2.2))
+
+pedestrainFile = Pmisc::downloadIfOld(
+'http://pbrown.ca/teaching/303/data/pedestrians.rds')
+pedestrians = readRDS(pedestrainFile)
+pedestrians = pedestrians[!is.na(pedestrians$time), ]
+pedestrians$y = pedestrians$Casualty_Severity == 'Fatal'
+dim(pedestrians)
+pedestrians[1:3, ]
+table(pedestrians$Casualty_Severity, pedestrians$sex)
+range(pedestrians$time)
+theGlm = glm(y ~ sex + age + Light_Conditions + Weather_Conditions,
+data = pedestrians, family = binomial(link = "logit"))
+knitr::kable(summary(theGlm)$coef, digits = 3)
+theGlmInt = glm(y ~ sex * age + Light_Conditions + Weather_Conditions,
+data = pedestrians, family = binomial(link = "logit"))
+knitr::kable(summary(theGlmInt)$coef, digits = 3)
+newData = expand.grid(
+age = levels(pedestrians$age),
+sex = c('Male', 'Female'),
+Light_Conditions = levels(pedestrians$Light_Conditions)[1],
+Weather_Conditions = levels(pedestrians$Weather_Conditions)[1])
+thePred = as.matrix(as.data.frame(
+predict(theGlmInt, newData, se.fit=TRUE)[1:2])) %*% Pmisc::ciMat(0.99)
+thePred = as.data.frame(thePred)
+thePred$sex =newData$sex
+thePred$age = as.numeric(gsub("[[:punct:]].*|[[:alpha:]]", "", newData$age))
+toPlot2 = reshape2::melt(thePred, id.vars = c('age','sex'))
+toPlot3 = reshape2::dcast(toPlot2, age ~ sex + variable)
+matplot(toPlot3$age, exp(toPlot3[,-1]),
+type='l', log='y', col=rep(c('black','red'), each=3),
+lty=rep(c(1,2,2),2),
+ylim = c(0.007, 0.11), xaxs='i',
+xlab= 'age', ylab='prob')
+legend('topleft', lty=1, col=c('black','red'), legend = c('male','female'), bty='n')
+```
